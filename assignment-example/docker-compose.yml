@@ -1,37 +1,9 @@
-version: "3.9"
-
 services:
-  # 1️⃣ MLflow Tracking & Registry
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.11.1
-    command: >
-      mlflow server --host 0.0.0.0 --port 5000
-                   --backend-store-uri sqlite:///mlflow.db
-                   --default-artifact-root /mlruns
-    volumes:
-      - ./mlruns:/mlruns
-    ports: ["5000:5000"]
-
-  # 2️⃣ FastAPI-based classifier (NEW)
-  classifier:
-    build: ./classifier_service     # see Dockerfile below
+  inference-api:
+    build: .
+    container_name: session12-assignment-api
+    ports:
+      - "8015:8000"
     environment:
-      - MLFLOW_URI=http://mlflow:5000
-      - MODEL_NAME=msg_cls
-      - MODEL_ALIAS=champion
-    depends_on: [mlflow]
-    ports: ["5001:8000"]   # FastAPI listens on 8000 inside
-
-  # 3️⃣ Lightweight LLM (Ollama)
-  llm_service:
-    image: ollama/ollama:latest     # exposes 11434/tcp by default
-    ports: ["11434:11434"]
-
-  # 4️⃣ FastAPI orchestrator (unchanged)
-  api:
-    build: ./fastapi_service
-    environment:
-      - CLS_ENDPOINT=http://classifier:8000/predict
-      - LLM_ENDPOINT=http://llm_service:11434/v1/chat/completions
-    depends_on: [classifier, llm_service]
-    ports: ["8000:8000"]
+      MODEL_URI: ${MODEL_URI:-demo://keyword-bot}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-}

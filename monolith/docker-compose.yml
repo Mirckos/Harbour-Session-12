@@ -1,10 +1,9 @@
-version: "3.9"
-
 services:
-  msg_api:
-    build: .              # build image from Dockerfile in the current directory
-    container_name: msg_api
-    ports:                # host:container
-      - "8000:8000"
-    environment:          # tweak verbosity without touching code
-      - LOG_LEVEL=info
+  inference-api:
+    build: .
+    container_name: session12-monolith-api
+    ports:
+      - "8012:8000"
+    environment:
+      MODEL_NAME: keyword-bot-monolith
+      MODEL_VERSION: baked-v1

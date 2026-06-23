@@ -1,41 +1,20 @@
-version: "3.9"
-
 services:
-  # 1️⃣ MLflow Tracking + Registry
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.11.1
-    command: >
-      mlflow server --host 0.0.0.0 --port 5000
-                   --backend-store-uri sqlite:///mlflow.db
-                   --default-artifact-root /mlruns
-    volumes:
-      - ./mlruns:/mlruns          # shared FileStore for artefacts
-    ports: ["5000:5000"]
-
-  # 2️⃣ Model-as-a-Service classifier
   classifier:
-    image: ghcr.io/mlflow/mlflow:v2.11.1
-    command: >
-      mlflow models serve -m models:/msg_cls@champion
-                         --env-manager=local          # no Conda
-                         --host 0.0.0.0 -p 5001
+    build: ./classifier_service
+    container_name: session12-classifier-service
+    ports:
+      - "8014:8000"
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-    volumes:
-      - ./mlruns:/mlruns          # reads artefacts from same volume
-    depends_on: [mlflow]
-    ports: ["5001:5001"]
+      MODEL_NAME: keyword-bot-classifier
+      MODEL_VERSION: service-v1
 
-  # 3️⃣ Lightweight LLM endpoint (Ollama example)
-  llm_service:
-    image: ollama/ollama:latest   # listens on 11434/tcp by default
-    ports: ["11434:11434"]
-
-  # 4️⃣ FastAPI orchestrator
   api:
-    build: ./fastapi_service
+    build: ./api_service
+    container_name: session12-public-api
+    depends_on:
+      - classifier
+    ports:
+      - "8013:8000"
     environment:
-      - CLS_ENDPOINT=http://classifier:5001/invocations
-      - LLM_ENDPOINT=http://llm_service:11434/v1/chat/completions
-    depends_on: [classifier, llm_service]
-    ports: ["8000:8000"]
+      CLASSIFIER_URL: http://classifier:8000
+      REQUEST_TIMEOUT_SECONDS: "2.0"

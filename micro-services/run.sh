@@ -1,11 +1,25 @@
-# 1. build + start
-docker compose up --build
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 2. sanity checks
-curl localhost:8000/health
-# -> {"status":"ok"}
+cd "$(dirname "$0")"
 
-curl -X POST localhost:8000/predict \
-     -H "Content-Type: application/json" \
-     -d '{"text":"hello there"}'
-# -> {"probability":0.873}
+docker compose up -d --build
+
+until curl -fs http://127.0.0.1:8013/ready >/dev/null 2>&1; do
+  sleep 1
+done
+
+curl -s http://127.0.0.1:8013/ready | python3 -m json.tool
+
+curl -s -X POST http://127.0.0.1:8013/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "hello, I can help you automate this task",
+    "dialog_id": "11111111-1111-1111-1111-111111111111",
+    "id": "22222222-2222-2222-2222-222222222222",
+    "participant_index": 0
+  }' | python3 -m json.tool
+
+echo
+echo "Open public API Swagger UI: http://127.0.0.1:8013/docs"
+echo "Open classifier Swagger UI: http://127.0.0.1:8014/docs"
